@@ -28,7 +28,21 @@ docker swarm init --advertise-addr 192.168.56.101 #IP of th VM
 ```
 then copy the given line to add worker in other machine and to add manager use this line to copy the manager token:
 ```
-docker swarm join-token -q worker
+docker swarm join-token -q manager
+```
+BE CAREFUL, if you shutdown your vm or our computer, It may append a lot of errors like this:
+```
+core@core-01 ~ $ docker node ls    
+ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
+6g4d3gbp1dbixdu4yvvg9ke3v *   core-01             Ready               Active              Leader              18.06.1-ce
+wu0ibw53ioer7p4fz84gx7pjh     core-02             Unknown             Active              Unreachable         18.06.1-ce
+j9a3vdlws4z64sfs98xr1lwxn     core-03             Ready               Active              Reachable           18.06.1-ce
+5u44tw20kxz7e76uczuqxgho3     core-04             Down                Active                                  18.06.1-ce
+9biu72yn4g7v5ric5ezc1cclf     core-05             Down                Active                                  18.06.1-ce
+```
+In that case I recommend you to type the command line just under and restart all your manipulation:
+```
+vagrant destroy
 ```
 # Dumb Service - Part 1
 you only have to get back the repository of an older project:
@@ -38,36 +52,45 @@ you only have to get back the repository of an older project:
 after creating an account and following [steps](https://www.weave.works/docs/cloud/latest/install/docker-swarm/) to use it, you can see the structur of your docker swarm.
 
 **Answer**
---> weave cloud works using a temporary container, services start up a container with a docker client and docker socket connected to the swarm. It also work because there is no privileged in Swarm.
+* weave cloud works using a temporary container, services start up a container with a docker client and docker socket connected to the swarm. It also work because there is no privileged in Swarm.
 
 ## Ceph
 We will only follow the line recommended in the original [documentation](https://github.com/It4lik/B3-Cloud-2018/tree/master/tp1)
 
 **Answer**
---> distributed filesystem provides service that map the directories and file names of the file system, to acces them on any machine that are connected by this services.
---> I think without trying it, that we can automate the deployement using Ansible. If we write a playbook that lunch each command line we did, and because it is cross OS, It should be able to deply a new node.
--->
+* distributed filesystem provides service that map the directories and file names of the file system, to acces them on any machine that are connected by this services.
+* I think without trying it, that we can automate the deployement using Ansible and vagrantfile. I've found this [link](https://github.com/ceph/ceph-ansible) and this should work.
+* 
 
 ## NFS
+find the line:
+```
+ #config.vm.synced_folder
+```
+on Vagrantfile and delete the **#**.
+Also add this line to enable host-only network
+```
+config.vm.network "private_network", ip: ip, type: "dhcp"
+```
 **Answer**
---> Network File System is a file sharing protocol, it doesn't define anything about the underlying file system.
---> As I said just before, I didn't try it but I think a good way to automate it is to use Ansible.
+* Network File System is a file sharing protocol, it doesn't define anything about the underlying file system.
+* our method is already an automate
 
 ### Registry - Part 1
 **Answer**
---> The service is lunch into the host where you run the command line usually or into another node with more cpu available, but you can precise where to lunch it.
+* The service is lunch into the host where you run the command line usually or into another node with more cpu available, but you can precise where to lunch it.
 to know where the services is running  just type:
 ```
 docker stack services <NAME>
 ```
---> It's the work of the orchestrator in the swarm manager to connect each node with there services.
+* It's the work of the orchestrator in the swarm manager to connect each node with there services.
 ![https://docs.docker.com/engine/swarm/images/service-lifecycle.png](https://docs.docker.com/engine/swarm/images/service-lifecycle.png)
 
 # Dumb Service - Part 2
 
 ## Keepalived
 **Answer**
---> *--net=host* is used to define an outside gate to interact with the inside docker swarm network. *nsenter* is a tool used to acces into namespace, It is used to debug a service.
+* *--net=host* is used to define an outside gate to interact with the inside docker swarm network. *nsenter* is a tool used to acces into namespace, It is used to debug a service.
 to use it you need this two line:
 ```
 # to know PID of the container
@@ -75,11 +98,12 @@ PID=$(docker inspect --format {{.State.Pid}} <name>)
 # to enter the container
 nsenter --target $PID --mount --uts --ipc --net --pid
 ```
---> *KEEPALIVED_PRIORITY* or Virtual Router Redundancy Protocol give a device's priority for becoming the master default device. To becoming more priority, just decrease the value associated.
+* *KEEPALIVED_PRIORITY* or Virtual Router Redundancy Protocol give a device's priority for becoming the master default device. To becoming more priority, just decrease the value associated.
 
 ## Show me your metrics
---> *collector* in this context means that tools expose and group informations from each container/services
---> we gonna list each tool with a short description of their job :
+**Answer**
+* *collector* in this context means that tools expose and group informations from each container/services
+* we gonna list each tool with a short description of their job :
   - prometheus, It collects metrics
   from configured targets at given intervals, evaluates rule expressions, displays the results, and can trigger alerts if some condition is  observed to be true
   - grafana is a website showing metrics collected by prometheus, it's organised by diagram and values
@@ -88,3 +112,8 @@ nsenter --target $PID --mount --uts --ipc --net --pid
   - alertmanager handles alerts sent by client applications. It takes care of deduplicating, grouping, and routing them to the correct receiver integration. It also takes care of silencing and inhibition of alerts.
   - unsee is the altert dashboard for Prometheus alertmanager.
   - caddy, It scans Docker metadata looking for labels indicating that the service or container should be exposed on caddy.
+
+## Traefik
+**Answer**
+* Traefik as a reverse proxy, create a connection between micro services and the outside network. Here is an illustration from the official web site: 
+![https://docs.traefik.io/img/architecture.png](https://docs.traefik.io/img/architecture.png)
